@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrderFlow</title>
+<style>
+:root{--green:#00bf63;--red:#ff3131;--grey:#a6a6a6;--side:#929292}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:#000;background:#fff}
+[hidden]{display:none!important}
+#app{display:grid;grid-template-columns:120px 1fr;min-height:100vh}
+#nav{background:var(--side);display:flex;flex-direction:column;gap:14px;padding:30px 0 20px;position:sticky;top:0;height:100vh}
+#nav button{all:unset;cursor:pointer;background:#000;height:68px;border-radius:0 40px 40px 0;display:flex;align-items:center;justify-content:center;position:relative}
+#nav button svg{width:36px;height:36px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#nav button[aria-current=page]::after{content:"";position:absolute;right:20px;width:7px;height:34px;background:#fff;border-radius:2px}
+#nav button:focus-visible{outline:3px solid #fff;outline-offset:-6px}
+#nav .sp{flex:1}
+#nav button.plain{background:none;border-radius:0;height:60px}
+#nav button.plain svg{stroke:#000}
+#nav button.plain[aria-current=page]::after{right:12px;height:30px}
+main{padding:36px 60px 130px;max-width:1150px}
+.clock{position:fixed;top:14px;right:24px;text-align:center;font-weight:600;line-height:1.3}
+.counters{display:flex;gap:24px;margin-bottom:30px}
+.counter{flex:1;max-width:280px;height:88px;border-radius:22px;color:#fff;font-size:54px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.g{background:var(--green)}.r{background:var(--red)}.n{background:var(--grey)}
+.search{display:flex;align-items:center;gap:12px;border:2px solid #000;border-radius:20px;padding:0 18px;height:68px;margin-bottom:26px;max-width:780px}
+.search svg{width:30px;height:30px;stroke:#000;fill:none;stroke-width:2.4;flex:none}
+.search input{flex:1;border:0;outline:0;font-size:22px;height:100%;background:none}
+.search:focus-within{box-shadow:0 0 0 3px #000}
+.search button{all:unset;cursor:pointer;display:flex}
+.row{display:flex;align-items:center;gap:16px;border-radius:22px;padding:6px 24px;min-height:68px;margin-bottom:14px;font-size:24px;font-weight:700}
+.row.r{color:#000}
+.row.c{justify-content:center;text-align:center}
+.row .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.row .sub{display:block;font-size:14px;font-weight:400}
+.ico{all:unset;cursor:pointer;display:inline-flex;padding:6px;border-radius:10px}
+.ico svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ico.dk svg{stroke:#000}
+.ico:focus-visible{outline:3px solid #000}
+.ico[disabled]{opacity:.35;cursor:not-allowed}
+.fab{position:fixed;right:44px;bottom:36px;width:104px;height:104px;border-radius:50%;background:#000;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fab svg{width:60px;height:60px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round}
+.fab:focus-visible{outline:4px solid var(--green)}
+.empty{font-size:19px;color:#444;padding:20px 0}
+.pb{all:unset;cursor:pointer;display:block;background:#929292;border-radius:24px;padding:20px 32px;font-size:24px;font-weight:700;text-align:center;margin-bottom:16px;width:420px;max-width:100%}
+.pb:focus-visible{outline:3px solid #000}
+.wrap{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.btn{background:#000;color:#fff;border:0;border-radius:16px;padding:11px 22px;font-size:17px;font-weight:600;cursor:pointer}
+.btn.alt{background:#a6a6a6;color:#000}
+.btn:focus-visible{outline:3px solid var(--green)}
+.err{color:#b00020;min-height:1.3em;font-size:15px}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#000;color:#fff;padding:14px 26px;border-radius:16px;font-size:17px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:80vw;z-index:99}
+.toast.show{opacity:1}.toast.bad{background:#b00020}
+dialog{border:0;border-radius:26px;padding:28px 32px;width:min(700px,94vw);max-height:92vh;overflow:auto}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 14px;font-size:26px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.form .full{grid-column:1/-1}
+.form label{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+.form input,.form select,.form textarea{width:100%;border:2px solid #000;border-radius:12px;padding:9px 12px;font-size:16px;font-family:inherit}
+.actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+.line{display:grid;grid-template-columns:1.3fr 1.3fr 70px 100px 36px;gap:8px;margin-bottom:8px}
+.login{position:fixed;inset:0;background:#929292;display:flex;align-items:center;justify-content:center}
+.lbox{background:#fff;border-radius:26px;padding:36px;width:340px;display:flex;flex-direction:column;gap:10px}
+.lbox h1{margin:0 0 8px}
+.lbox input{border:2px solid #000;border-radius:12px;padding:12px;font-size:22px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;font-size:16px}
+.kv dt{font-weight:600}.kv dd{margin:0}
+.filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:end}
+.filters label{font-size:13px;font-weight:600;display:block}
+.filters input,.filters select{border:2px solid #000;border-radius:10px;padding:7px 10px;font-size:15px}
+.sum{display:flex;gap:26px;flex-wrap:wrap;margin:6px 0 18px;font-size:17px}
+.note{background:#f2f2f2;border-radius:14px;padding:12px 16px;font-size:15px;margin:10px 0}
+.thumb{width:40px;height:40px;border-radius:8px;object-fit:cover}
+#printArea{display:none}
+@media print{
+  @page{size:var(--lw,100mm) var(--lh,150mm);margin:0}
+  body.printing-label>*:not(#printArea){display:none!important}
+  body.printing-label #printArea{display:block}
+  body.printing-report>*:not(#printArea){display:none!important}
+  body.printing-report #printArea{display:block}
+}
+.label{width:var(--lw,100mm);height:var(--lh,150mm);padding:4mm;font-family:Arial,Helvetica,sans-serif;overflow:hidden;color:#000;break-after:page}
+.label .from{font-size:8pt;border-bottom:.4mm solid #000;padding-bottom:2mm;margin-bottom:3mm}
+.label .to{font-size:14pt;font-weight:700;line-height:1.25;margin-bottom:3mm}
+.label .to small{display:block;font-size:10pt;font-weight:400}
+.label .meta{font-size:9pt;border-top:.4mm solid #000;padding-top:2mm}
+.label .bc{text-align:center;margin-top:3mm}.label .bc svg{width:100%;height:28mm}
+.rep{font-family:Arial,sans-serif;font-size:10pt;padding:10mm}
+.rep table{width:100%;border-collapse:collapse}.rep th,.rep td{border-bottom:1px solid #999;padding:3px 5px;text-align:left}
+.rep thead{display:table-header-group}
+</style>
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <form id="loginForm" class="lbox">
+    <h1>OrderFlow</h1>
+    <label for="pin">PIN</label>
+    <input id="pin" type="password" autocomplete="current-password">
+    <div id="loginErr" class="err" role="alert"></div>
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <nav id="nav" aria-label="Main"></nav>
+  <main id="main"></main>
+  <div id="clock" class="clock"></div>
+  <button id="fab" class="fab" aria-label="Create order" title="Create order"></button>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg"></dialog>
+<div id="printArea"></div>
+
+<script>
+'use strict';
+/* ============ helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON = {
+  home:'<path d="M3 11 12 3l9 8"/><path d="M5 10v11h5v-6h4v6h5V10"/>',
+  truck:'<path d="M2 6h12v10H2z"/><path d="M14 9h4l4 4v3h-8"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M1 10h3M1 13h3"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 6 10 8 10-8"/>',
+  history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  swap:'<path d="M12 2v8M8 6l4-4 4 4"/><path d="M5 12h14M5 16h14"/><path d="M12 22v-5M8 18l4 4 4-4"/>',
+  gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  printer:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M6 14h12v7H6z"/>',
+  plus:'<path d="M12 4v16M4 12h16"/>',
+  search:'<circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/>',
+  x:'<path d="M5 5l14 14M19 5 5 19"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7.5v.5"/>'
+};
+const svg = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+let toastT;
+function toast(msg, bad){const t=$('#toast');t.textContent=msg;t.className='toast show'+(bad?' bad':'');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),bad?6000:3200)}
+const guard = fn => (...a) => { try { const r = fn(...a); if (r && r.catch) r.catch(e => toast(e.message, true)); } catch (e) { toast(e.message, true); } };
+const num = v => Number(v) || 0;
+const r2 = v => Math.round(num(v) * 100) / 100;
+const fmt = n => { try { return new Intl.NumberFormat(undefined,{style:'currency',currency:DB.settings.currency||'USD'}).format(n||0); } catch { return (n||0).toFixed(2); } };
+const today = () => new Date().toISOString().slice(0,10);
+const stamp = () => new Date().toISOString().replace('T',' ').slice(0,19);
+
+/* ============ storage ============ */
+const KEY = 'orderflow_v1';
+const DEFAULT = () => ({
+  seq: 1, orders: [], products: [], emails: [], prints: [], audit: [],
+  auth: null,
+  settings: { store_name:'My Store', sender_name:'', sender_address:'', sender_phone:'', sender_email:'', currency:'USD',
+    label_w:100, label_h:150, stock_policy:'creation', session_minutes:30, default_carrier:'UPS',
+    carriers:[{name:'UPS',url:'https://www.ups.com/track?tracknum={tracking}'},{name:'FedEx',url:'https://www.fedex.com/fedextrack/?trknbr={tracking}'},
+      {name:'USPS',url:'https://tools.usps.com/go/TrackConfirmAction?tLabels={tracking}'},{name:'DHL',url:'https://www.dhl.com/global-en/home/tracking.html?tracking-id={tracking}'}] }
+});
+let DB;
+function load(){
+  try { const raw = localStorage.getItem(KEY); DB = raw ? JSON.parse(raw) : DEFAULT(); }
+  catch { DB = DEFAULT(); toast('Saved data could not be read. Starting empty. Restore a backup from Import / Export.', true); }
+  const d = DEFAULT(); for (const k in d) if (!(k in DB)) DB[k] = d[k];
+  for (const k in d.settings) if (!(k in DB.settings)) DB.settings[k] = d.settings[k];
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(DB)); return true; }
+  catch { toast('Could not save: browser storage is full or blocked. Export a backup now.', true); return false; }
+}
+const audit = (event, ref, detail) => { DB.audit.push({ t: stamp(), event, ref: ref||'', detail: detail||'' }); if (DB.audit.length > 2000) DB.audit.splice(0, DB.audit.length - 2000); };
+
+/* ============ auth ============ */
+const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2,'0')).join('');
+async function setPin(pin, must){ const salt = crypto.getRandomValues(new Uint32Array(4)).join('-'); DB.auth = { salt, hash: await sha(salt + pin), must }; save(); }
+let fails = 0, lockUntil = 0, lastActive = Date.now(), loggedIn = false;
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault(); const err = $('#loginErr'); err.textContent = '';
+  if (Date.now() < lockUntil) { err.textContent = 'Too many attempts. Wait a minute and try again.'; return; }
+  if (!DB.auth) await setPin('000', true);
+  if (await sha(DB.auth.salt + $('#pin').value) !== DB.auth.hash) {
+    if (++fails >= 5) { lockUntil = Date.now() + 60000; fails = 0; }
+    err.textContent = 'Wrong PIN'; return;
+  }
+  fails = 0; loggedIn = true; lastActive = Date.now();
+  $('#login').hidden = true; $('#app').hidden = false; audit('login'); save(); start();
+  if (DB.auth.must) pinDialog(true);
+});
+function showLogin(){ loggedIn = false; $('#app').hidden = true; $('#dlg').open && $('#dlg').close(); $('#login').hidden = false; $('#pin').value = ''; $('#pin').focus(); }
+['click','keydown'].forEach(ev => document.addEventListener(ev, () => lastActive = Date.now()));
+setInterval(() => { if (loggedIn && Date.now() - lastActive > DB.settings.session_minutes * 60000) { toast('Signed out after inactivity'); showLogin(); } }, 15000);
+function pinDialog(forced){
+  openDlg(`<h2>${forced?'Choose a new PIN':'Change PIN'}</h2>${forced?'<p>The default PIN is for first setup only. Use at least 6 characters.</p>':''}
+    <div class="form"><div class="full"><label for="cp0">Current PIN</label><input id="cp0" type="password"></div>
+    <div class="full"><label for="cp1">New PIN</label><input id="cp1" type="password"></div></div>
+    <div class="actions">${forced?'':'<button class="btn alt" data-close>Cancel</button>'}<button class="btn" id="cps">Save PIN</button></div>`, forced);
+  $('#cps').onclick = guard(async () => {
+    if (await sha(DB.auth.salt + $('#cp0').value) !== DB.auth.hash) throw new Error('Current PIN is wrong');
+    const n = $('#cp1').value; if (n.length < 6) throw new Error('New PIN must be at least 6 characters'); if (n === '000') throw new Error('Choose a PIN other than the default');
+    await setPin(n, false); audit('pin.changed'); save(); $('#dlg').close(); toast('PIN changed');
+  });
+}
+
+/* ============ Code 128 (subset B) ============ */
+const C128 = '212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 211412 211214 211232 2331112'.split(' ');
+function code128svg(text){
+  const codes = [104]; let sum = 104;
+  [...text].forEach((ch,i) => { const v = ch.charCodeAt(0) - 32; if (v < 0 || v > 95) throw new Error('Barcode has an unsupported character'); codes.push(v); sum += v * (i+1); });
+  codes.push(sum % 103, 106);
+  let x = 10, bars = '';
+  codes.forEach(c => { [...C128[c]].forEach((w,i) => { const wd = +w; if (i % 2 === 0) bars += `<rect x="${x}" y="0" width="${wd}" height="60" fill="#000"/>`; x += wd; }); });
+  x += 10;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${x} 80" preserveAspectRatio="none" role="img" aria-label="Barcode ${esc(text)}">${bars}<text x="${x/2}" y="76" text-anchor="middle" font-family="Arial" font-size="14">${esc(text)}</text></svg>`;
+}
+function newBarcode(){
+  for (let i=0;i<20;i++){ const c='OF'+Date.now().toString().slice(-8)+String(Math.floor(Math.random()*10000)).padStart(4,'0'); if(!DB.orders.some(o=>o.barcode===c)) return c; }
+  throw new Error('Could not generate a unique barcode');
+}
+
+/* ============ shell ============ */
+let route = 'home';
+const NAV = [['home','home','Home'],['shipping','truck','Shipping'],['email','mail','Email status'],['sales','history','Sales history'],['io','swap','Import / Export']];
+function renderNav(){
+  $('#nav').innerHTML = NAV.map(([id,ic,l]) => `<button data-r="${id}" aria-label="${l}" title="${l}" ${route===id?'aria-current="page"':''}>${svg(ic)}</button>`).join('')
+    + `<span class="sp"></span><button class="plain" data-r="settings" aria-label="Settings" title="Settings" ${route==='settings'?'aria-current="page"':''}>${svg('gear')}</button>`;
+  $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => go(b.dataset.r));
+}
+function go(r){ route = r; renderNav(); $('#fab').hidden = r !== 'home'; render(); }
+function render(){ ({home:viewHome,shipping:viewShipping,email:viewEmail,sales:viewSales,io:viewIO,settings:viewSettings})[route](); }
+function tick(){ const d=new Date(); $('#clock').innerHTML = d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'<br>'+d.toLocaleDateString(); }
+let started = false;
+function start(){ $('#fab').innerHTML = svg('plus'); $('#fab').onclick = () => orderDialog(); tick(); if(!started){ setInterval(tick,15000); started = true; } go('home'); }
+function openDlg(html, locked){
+  const d = $('#dlg'); d.innerHTML = html; d.oncancel = e => { if (locked) e.preventDefault(); };
+  d.querySelectorAll('[data-close]').forEach(b => b.onclick = () => d.close()); if (!d.open) d.showModal();
+}
+function searchBox(ph, onInput, focus){
+  const w = document.createElement('div'); w.className = 'search';
+  w.innerHTML = `${svg('search')}<input type="text" placeholder="${ph}" aria-label="${ph}" autocomplete="off"><button aria-label="Clear search">${svg('x')}</button>`;
+  const i = w.querySelector('input'); i.addEventListener('input', () => onInput(i.value));
+  w.querySelector('button').onclick = () => { i.value = ''; onInput(''); i.focus(); };
+  if (focus) setTimeout(() => i.focus(), 0); return { el: w, input: i };
+}
+const statusClass = o => o.shipping_status === 'shipped' ? 'g' : o.shipping_status === 'cancelled' ? 'r' : 'n';
+const itemSummary = o => o.items.map(i => `${i.name} x${i.qty}`).join(', ');
+
+/* ============ printing (browser print dialog) ============ */
+function labelHtml(o){
+  const s = DB.settings, sh = o.shipment;
+  return `<div class="label"><div class="from"><b>FROM</b> ${esc(s.store_name)}<br>${esc(s.sender_name)} ${esc(s.sender_phone)}<br>${esc(s.sender_address)}</div>
+    <div class="to"><b style="font-size:8pt">TO</b><br>${esc(o.recipient_name)}<br>${esc(o.address)}<br>${esc([o.city,o.state,o.postal_code].filter(Boolean).join(', '))}<br>${esc(o.country)}<small>${esc(o.phone)}</small></div>
+    <div class="meta">Order ${esc(o.order_no)} &middot; ${esc(o.created.slice(0,10))}<br>${esc(itemSummary(o))}${sh?'<br>'+esc(sh.carrier+' '+sh.tracking):''}</div>
+    <div class="bc">${code128svg(o.barcode)}</div></div>`;
+}
+function printHtml(html, mode, orderId){
+  const s = DB.settings;
+  document.documentElement.style.setProperty('--lw', s.label_w + 'mm'); document.documentElement.style.setProperty('--lh', s.label_h + 'mm');
+  $('#printArea').innerHTML = html; document.body.classList.add(mode);
+  const done = () => { document.body.classList.remove(mode); $('#printArea').innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  DB.prints.push({ t: stamp(), order_id: orderId || null, status: 'print_dialog_opened' }); save();
+  setTimeout(() => window.print(), 50);
+}
+function printLabel(id){
+  const o = DB.orders.find(x => x.id === id); if (!o) throw new Error('Order not found');
+  printHtml(labelHtml(o), 'printing-label', id);
+  toast('Print dialog opened. This page cannot confirm the label actually printed.');
+}
+
+/* ============ Home ============ */
+function viewHome(){
+  const c = k => DB.orders.filter(o => o.shipping_status === k).length;
+  const t = DB.orders.filter(o => o.created.slice(0,10) === today() && o.shipping_status !== 'cancelled');
+  const low = DB.products.filter(p => p.active && p.stock <= p.low_stock).length;
+  const pend = DB.orders.filter(o => o.shipping_status === 'pending').slice().reverse();
+  $('#main').innerHTML = `<div class="counters"><div class="counter g" title="Shipped">${c('shipped')}</div><div class="counter r" title="Cancelled">${c('cancelled')}</div><div class="counter n" title="Pending">${c('pending')}</div></div>
+    <p>Today: ${t.length} orders, ${fmt(t.reduce((a,o)=>a+o.total,0))}${low?` &middot; ${low} low-stock product(s)`:''}${DB.emails.some(e=>e.status==='failed')?' &middot; failed emails':''}</p><div id="list"></div>`;
+  const list = $('#list');
+  if (!pend.length) { list.innerHTML = '<p class="empty">No pending orders. Press + to create one.</p>'; return; }
+  list.innerHTML = pend.map(o => `<div class="row n" data-id="${o.id}"><span class="name" style="cursor:pointer">${esc(o.recipient_name)}<span class="sub">${esc(o.order_no)} &middot; ${esc(itemSummary(o))}</span></span>
+    <button class="ico" data-a="ship" aria-label="Enter tracking for ${esc(o.recipient_name)}">${svg('truck')}</button>
+    <button class="ico" data-a="mail" aria-label="Email status">${svg('mail')}</button>
+    <button class="ico" data-a="print" aria-label="Print label for ${esc(o.recipient_name)}">${svg('printer')}</button></div>`).join('');
+  list.querySelectorAll('.row').forEach(r => { const id = +r.dataset.id;
+    r.querySelector('[data-a=ship]').onclick = () => shipDialog(id); r.querySelector('[data-a=mail]').onclick = () => go('email');
+    r.querySelector('[data-a=print]').onclick = guard(() => printLabel(id)); r.querySelector('.name').onclick = () => detailDialog(id); });
+}
+
+/* ============ Create order ============ */
+function orderDialog(){
+  const act = DB.products.filter(p => p.active);
+  const opts = '<option value="">Custom item</option>' + act.map(p => `<option value="${p.id}">${esc(p.name)} (${esc(p.sku)}, ${p.stock} in stock)</option>`).join('');
+  openDlg(`<h2>Create order</h2><div class="form">
+    <div class="full"><label for="o_name">Recipient full name</label><input id="o_name"></div>
+    <div><label for="o_email">Email</label><input id="o_email" type="email"></div><div><label for="o_phone">Phone</label><input id="o_phone"></div>
+    <div class="full"><label for="o_addr">Delivery address</label><input id="o_addr"></div>
+    <div><label for="o_city">City</label><input id="o_city"></div><div><label for="o_state">State or province</label><input id="o_state"></div>
+    <div><label for="o_zip">Postal code</label><input id="o_zip"></div><div><label for="o_country">Country</label><input id="o_country"></div>
+    <div class="full"><label>Products (catalog item, name, quantity, unit price)</label><div id="lines"></div><button class="btn alt" id="addLine" type="button">Add product</button></div>
+    <div><label for="o_disc">Discount</label><input id="o_disc" type="number" min="0" step="0.01" value="0"></div>
+    <div><label for="o_ship">Shipping cost</label><input id="o_ship" type="number" min="0" step="0.01" value="0"></div>
+    <div><label for="o_tax">Tax</label><input id="o_tax" type="number" min="0" step="0.01" value="0"></div>
+    <div><label for="o_pay">Payment status</label><select id="o_pay"><option>unpaid</option><option>paid</option></select></div>
+    <div class="full"><label for="o_notes">Order notes</label><textarea id="o_notes" rows="2"></textarea></div>
+    <div class="full"><strong>Total: <span id="o_total">${fmt(0)}</span></strong></div></div>
+    <div class="actions"><button class="btn alt" data-close>Cancel</button><button class="btn" id="o_save">Save order</button></div>`);
+  const lines = $('#lines');
+  const calc = () => { let s = 0; lines.querySelectorAll('.line').forEach(l => s += num(l.children[2].value) * num(l.children[3].value));
+    $('#o_total').textContent = fmt(Math.max(0, s - num($('#o_disc').value) + num($('#o_ship').value) + num($('#o_tax').value))); };
+  const add = () => { const d = document.createElement('div'); d.className = 'line';
+    d.innerHTML = `<select aria-label="Catalog item">${opts}</select><input aria-label="Product name" placeholder="Name"><input type="number" min="1" step="1" value="1" aria-label="Quantity"><input type="number" min="0" step="0.01" aria-label="Unit price"><button class="ico dk" type="button" aria-label="Remove line">${svg('x')}</button>`;
+    const [sel, nm, qty, pr, rm] = d.children;
+    sel.onchange = () => { const p = DB.products.find(x => x.id === +sel.value); if (p) { nm.value = p.name; pr.value = p.price; qty.max = p.stock; } else qty.removeAttribute('max'); calc(); };
+    [qty, pr].forEach(i => i.oninput = calc); rm.onclick = () => { d.remove(); calc(); }; lines.append(d); };
+  ['o_disc','o_ship','o_tax'].forEach(i => $('#'+i).oninput = calc); $('#addLine').onclick = add; add();
+  $('#o_save').onclick = guard(() => {
+    const items = [...lines.querySelectorAll('.line')].map(l => ({ product_id: +l.children[0].value || null, name: l.children[1].value.trim(), qty: num(l.children[2].value), price: r2(l.children[3].value) })).filter(i => i.name);
+    const o = createOrder({ recipient_name: $('#o_name').value, email: $('#o_email').value, phone: $('#o_phone').value, address: $('#o_addr').value, city: $('#o_city').value,
+      state: $('#o_state').value, postal_code: $('#o_zip').value, country: $('#o_country').value, discount: $('#o_disc').value, shipping: $('#o_ship').value, tax: $('#o_tax').value,
+      payment_status: $('#o_pay').value, notes: $('#o_notes').value, items });
+    $('#dlg').close(); toast(`Order ${o.order_no} saved`); render();
+    if (confirm('Print the shipping label now?')) guard(() => printLabel(o.id))();
+  });
+}
+function createOrder(b){
+  const name = b.recipient_name.trim(), addr = b.address.trim(), email = b.email.trim();
+  if (!name) throw new Error('Recipient name is required'); if (!addr) throw new Error('Delivery address is required');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Email address is not valid');
+  if (!b.items.length) throw new Error('Add at least one product');
+  let sub = 0;
+  for (const i of b.items) { if (!Number.isInteger(i.qty) || i.qty < 1) throw new Error('Quantity must be a whole number of 1 or more'); if (i.price < 0) throw new Error('Price cannot be negative'); sub += i.qty * i.price; }
+  const disc = r2(b.discount), ship = r2(b.shipping), tax = r2(b.tax); if (disc < 0 || ship < 0 || tax < 0) throw new Error('Discount, shipping and tax cannot be negative');
+  const policy = DB.settings.stock_policy;
+  if (policy === 'creation') checkStock(b.items);
+  const id = DB.seq++;
+  const o = { id, order_no: 'ORD-' + String(id).padStart(6,'0'), barcode: newBarcode(), recipient_name: name, email, phone: b.phone.trim(), address: addr, city: b.city.trim(), state: b.state.trim(),
+    postal_code: b.postal_code.trim(), country: b.country.trim(), items: b.items, subtotal: r2(sub), discount: disc, shipping: ship, tax,
+    total: Math.max(0, r2(sub - disc + ship + tax)), payment_status: b.payment_status, shipping_status: 'pending', email_status: 'none', stock_deducted: false,
+    notes: b.notes.trim(), created: stamp(), shipment: null };
+  DB.orders.push(o); if (policy === 'creation') moveStock(o, -1);
+  audit('order.created', o.order_no, 'total ' + o.total); save(); return o;
+}
+function checkStock(items){
+  const need = {}; items.forEach(i => { if (i.product_id) need[i.product_id] = (need[i.product_id] || 0) + i.qty; });
+  for (const pid in need) { const p = DB.products.find(x => x.id === +pid); if (!p || p.stock < need[pid]) throw new Error(`Not enough stock for ${p ? p.name : 'a product'} (available ${p ? p.stock : 0}, needed ${need[pid]})`); }
+}
+function moveStock(o, dir){ o.items.forEach(i => { const p = DB.products.find(x => x.id === i.product_id); if (p) p.stock += dir * i.qty; }); o.stock_deducted = dir < 0; }
+
+/* ============ Shipping ============ */
+function viewShipping(){
+  const m = $('#main'); m.innerHTML = ''; const list = document.createElement('div');
+  const draw = q => { const rows = DB.orders.filter(o => o.shipping_status === 'pending' && (!q || o.barcode.toLowerCase().includes(q.toLowerCase())));
+    list.innerHTML = rows.length ? rows.map(o => `<div class="row g c" role="button" tabindex="0" data-id="${o.id}">${esc(o.barcode)}</div>`).join('') : '<p class="empty">No pending orders match. Scan a barcode and press Enter.</p>';
+    list.querySelectorAll('.row').forEach(r => { const f = () => shipDialog(+r.dataset.id); r.onclick = f; r.onkeydown = e => e.key === 'Enter' && f(); }); };
+  const sb = searchBox('Scan or type a barcode, then press Enter', draw, true);
+  sb.input.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const code = sb.input.value.trim(); if (!code) return;
+    const o = DB.orders.find(x => x.barcode === code);
+    if (!o) { toast('No order matches this barcode', true); sb.input.select(); return; }
+    sb.input.value = '';
+    if (o.shipping_status === 'shipped') toast(`${o.order_no} was already shipped (${o.shipment.carrier} ${o.shipment.tracking})`, true);
+    else if (o.shipping_status === 'cancelled') toast(`${o.order_no} was cancelled`, true); else shipDialog(o.id); });
+  m.append(sb.el, list); draw('');
+}
+function shipDialog(id){
+  const o = DB.orders.find(x => x.id === id); if (!o) return;
+  if (o.shipping_status !== 'pending') return toast('This order is already ' + o.shipping_status, true);
+  openDlg(`<h2>Ship ${esc(o.order_no)}</h2><dl class="kv"><dt>Recipient</dt><dd>${esc(o.recipient_name)}</dd>
+    <dt>Address</dt><dd>${esc([o.address,o.city,o.state,o.postal_code,o.country].filter(Boolean).join(', '))}</dd><dt>Items</dt><dd>${esc(itemSummary(o))}</dd></dl>
+    <div class="form" style="margin-top:14px"><div><label for="sc">Carrier</label><select id="sc">${DB.settings.carriers.map(c => `<option ${c.name===DB.settings.default_carrier?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+    <div><label for="st">Tracking number</label><input id="st" autocomplete="off"></div></div>
+    <div class="actions"><button class="btn alt" data-close>Cancel</button><button class="btn" id="ss">Save and mark shipped</button></div>`);
+  $('#st').focus();
+  const save_ = guard(() => {
+    const carrier = $('#sc').value, tr = $('#st').value.trim().replace(/\s+/g, '');
+    if (!/^[A-Za-z0-9-]{6,40}$/.test(tr)) throw new Error('Tracking number must be 6-40 letters, numbers or dashes');
+    if (o.shipping_status !== 'pending') throw new Error('This order was already processed');
+    if (DB.settings.stock_policy === 'shipment' && !o.stock_deducted) { checkStock(o.items); moveStock(o, -1); }
+    o.shipment = { carrier, tracking: tr, at: stamp() }; o.shipping_status = 'shipped';
+    if (o.email) {
+      const c = DB.settings.carriers.find(x => x.name === carrier), url = c ? c.url.replace('{tracking}', encodeURIComponent(tr)) : '';
+      DB.emails.push({ id: Date.now() + Math.random(), order_id: o.id, order_no: o.order_no, to: o.email, name: o.recipient_name, type: 'shipping_confirmation', subject: 'Your order has been shipped', status: 'queued', attempts: 0, created: stamp(),
+        body: `Hello ${o.recipient_name},\n\nYour order ${o.order_no} has been shipped.\n\nTracking number: ${tr}\nCarrier: ${carrier}\n${url ? 'Track your shipment: ' + url + '\n' : ''}\nThank you for your purchase.\n\n${DB.settings.store_name}` });
+      o.email_status = 'queued';
+    }
+    audit('order.shipped', o.order_no, carrier + ' ' + tr); save(); $('#dlg').close();
+    toast(o.email ? 'Shipped. Email is queued: open it from Email status to send it from your mail app.' : 'Shipped.'); render();
+  });
+  $('#ss').onclick = save_; $('#st').onkeydown = e => e.key === 'Enter' && save_();
+}
+
+/* ============ Email status ============ */
+function viewEmail(){
+  const m = $('#main'); m.innerHTML = ''; const list = document.createElement('div');
+  const draw = q => { q = (q || '').toLowerCase();
+    const rows = DB.emails.filter(e => !q || e.to.toLowerCase().includes(q) || e.order_no.toLowerCase().includes(q)).slice().reverse();
+    list.innerHTML = rows.length ? rows.map(e => `<div class="row ${e.status==='sent'?'g':e.status==='failed'?'r':'n'} c" data-id="${e.id}"><span class="name">to:${esc(e.to)}<span class="sub">${esc(e.order_no)} &middot; ${esc(e.status)} &middot; ${esc(e.created)}</span></span>
+      ${e.status !== 'sent' ? '<button class="ico dk" data-a="open" aria-label="Open in mail app" title="Open in your mail app">' + svg('mail') + '</button><button class="btn" data-a="sent">Mark as sent</button>' : ''}</div>`).join('')
+      : '<p class="empty">No emails yet. Shipping an order that has a customer email creates one.</p>';
+    list.querySelectorAll('.row').forEach(r => { const e = DB.emails.find(x => String(x.id) === r.dataset.id); const op = r.querySelector('[data-a=open]'), sn = r.querySelector('[data-a=sent]');
+      if (op) op.onclick = () => { e.attempts++; save(); location.href = `mailto:${encodeURIComponent(e.to)}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`; };
+      if (sn) sn.onclick = () => { if (!confirm('Mark as sent only if you actually sent it from your mail app.')) return; e.status = 'sent'; const o = DB.orders.find(x => x.id === e.order_id); if (o) o.email_status = 'sent'; audit('email.marked_sent', e.order_no); save(); draw(sb.input.value); }; }); };
+  const sb = searchBox('Search by email or order', draw, true); m.append(sb.el, list,
+    Object.assign(document.createElement('p'), { className: 'note', textContent: 'This single-file edition cannot send email by itself. It prepares each message; you send it from your mail app and then mark it as sent.' })); draw('');
+}
+
+/* ============ Sales history ============ */
+function filteredSales(f){
+  return DB.orders.filter(o => (!f.q || [o.recipient_name,o.email,o.phone,o.barcode,o.order_no,o.shipment&&o.shipment.tracking,itemSummary(o)].join(' ').toLowerCase().includes(f.q.toLowerCase()))
+    && (!f.from || o.created.slice(0,10) >= f.from) && (!f.to || o.created.slice(0,10) <= f.to) && (!f.status || o.shipping_status === f.status) && (!f.pay || o.payment_status === f.pay)).slice().reverse();
+}
+function viewSales(){
+  const m = $('#main'); const f = { q:'', from:'', to:'', status:'', pay:'' };
+  m.innerHTML = `<div id="sb"></div><div class="filters"><div><label for="f1">From</label><input id="f1" type="date"></div><div><label for="f2">To</label><input id="f2" type="date"></div>
+    <div><label for="f3">Status</label><select id="f3"><option value="">All</option><option>pending</option><option>shipped</option><option>cancelled</option></select></div>
+    <div><label for="f4">Payment</label><select id="f4"><option value="">All</option><option>unpaid</option><option>paid</option><option>refunded</option></select></div>
+    <button class="btn alt" id="csv">Export CSV</button><button class="btn" id="pdf">Print / save PDF report</button></div><div class="sum" id="sum"></div><div id="list"></div>`;
+  const draw = () => { const rows = filteredSales(f), live = rows.filter(o => o.shipping_status !== 'cancelled');
+    $('#sum').innerHTML = `<span><b>${rows.length}</b> orders</span><span>Gross <b>${fmt(live.reduce((a,o)=>a+o.subtotal+o.shipping+o.tax,0))}</b></span><span>Discounts <b>${fmt(live.reduce((a,o)=>a+o.discount,0))}</b></span><span>Net <b>${fmt(live.reduce((a,o)=>a+o.total,0))}</b></span>`;
+    $('#list').innerHTML = rows.length ? rows.map(o => `<div class="row ${statusClass(o)}" data-id="${o.id}"><button class="ico dk" data-a="info" aria-label="Details for ${esc(o.order_no)}">${svg('info')}</button>
+      <span class="name" style="text-align:center">${esc(o.order_no)} &middot; ${esc(o.recipient_name)}<span class="sub">${fmt(o.total)} &middot; ${esc(o.payment_status)} &middot; ${esc(o.barcode)} &middot; ${esc(o.created)}</span></span>
+      <button class="ico" data-a="print" aria-label="Reprint label">${svg('printer')}</button></div>`).join('') : '<p class="empty">No orders found.</p>';
+    $('#list').querySelectorAll('.row').forEach(r => { const id = +r.dataset.id; r.querySelector('[data-a=info]').onclick = () => detailDialog(id); r.querySelector('[data-a=print]').onclick = guard(() => printLabel(id)); }); };
+  const sb = searchBox('Search name, email, phone, barcode, tracking, order ID, product', v => { f.q = v; draw(); }, true); $('#sb').append(sb.el);
+  [['f1','from'],['f2','to'],['f3','status'],['f4','pay']].forEach(([id,k]) => $('#'+id).onchange = e => { f[k] = e.target.value; draw(); });
+  $('#csv').onclick = () => download('orders.csv', 'text/csv', toCsv(filteredSales(f)));
+  $('#pdf').onclick = () => { const rows = filteredSales(f).filter(o => o.shipping_status !== 'cancelled'); const tot = rows.reduce((a,o)=>a+o.total,0);
+    printHtml(`<div class="rep"><h2>${esc(DB.settings.store_name)} - Sales report</h2><p>Period: ${esc(f.from||'start')} to ${esc(f.to||'today')} &middot; Generated ${esc(stamp())}</p>
+      <table><thead><tr><th>Order</th><th>Customer</th><th>Email</th><th>Product</th><th>Date</th><th>Payment</th><th>Total</th></tr></thead><tbody>${rows.map(o => `<tr><td>${esc(o.order_no)}</td><td>${esc(o.recipient_name)}</td><td>${esc(o.email)}</td><td>${esc(itemSummary(o))}</td><td>${esc(o.created.slice(0,10))}</td><td>${esc(o.payment_status)}</td><td>${fmt(o.total)}</td></tr>`).join('')}</tbody></table>
+      <p><b>${rows.length} orders &middot; Total ${fmt(tot)}</b></p></div>`, 'printing-report'); toast('In the print dialog choose "Save as PDF".'); };
+  draw();
+}
+function detailDialog(id){
+  const o = DB.orders.find(x => x.id === id); if (!o) return;
+  openDlg(`<h2>${esc(o.order_no)}</h2><dl class="kv"><dt>Recipient</dt><dd>${esc(o.recipient_name)}</dd><dt>Email</dt><dd>${esc(o.email)}</dd><dt>Phone</dt><dd>${esc(o.phone)}</dd>
+    <dt>Address</dt><dd>${esc([o.address,o.city,o.state,o.postal_code,o.country].filter(Boolean).join(', '))}</dd>
+    <dt>Items</dt><dd>${o.items.map(i => `${esc(i.name)} x${i.qty} @ ${fmt(i.price)}`).join('<br>')}</dd><dt>Total</dt><dd>${fmt(o.total)} (${esc(o.payment_status)})</dd>
+    <dt>Barcode</dt><dd>${esc(o.barcode)}</dd><dt>Status</dt><dd>${esc(o.shipping_status)}</dd><dt>Tracking</dt><dd>${o.shipment ? esc(o.shipment.carrier + ' ' + o.shipment.tracking) : '-'}</dd>
+    <dt>History</dt><dd>${DB.audit.filter(a => a.ref === o.order_no).map(a => esc(a.t + ' ' + a.event)).join('<br>')}</dd></dl>
+    <div class="actions">${o.shipping_status === 'pending' ? '<button class="btn alt" id="dc">Cancel order</button>' : ''}<button class="btn" data-close>Close</button></div>`);
+  const dc = $('#dc'); if (dc) dc.onclick = () => { if (!confirm('Cancel this order? Reserved stock will be returned.')) return;
+    if (o.stock_deducted) moveStock(o, +1); o.shipping_status = 'cancelled'; audit('order.cancelled', o.order_no); save(); $('#dlg').close(); toast('Order cancelled'); render(); };
+}
+
+/* ============ Import / Export ============ */
+function download(name, type, text){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.append(a); a.click(); a.remove(); toast('Saved ' + name); }
+function toCsv(rows){
+  const cell = v => { v = v == null ? '' : String(v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+  const head = ['order_no','barcode','customer','email','products','total','payment','status','carrier','tracking','created'];
+  return [head.join(','), ...rows.map(o => [o.order_no,o.barcode,o.recipient_name,o.email,itemSummary(o),o.total,o.payment_status,o.shipping_status,o.shipment&&o.shipment.carrier,o.shipment&&o.shipment.tracking,o.created].map(cell).join(','))].join('\r\n');
+}
+function viewIO(){
+  $('#main').innerHTML = `<h2>Import / Export</h2><button class="pb" id="x1">Export backup (JSON)</button><button class="pb" id="x2">Export orders (CSV)</button>
+    <button class="pb" id="x3">Export products (CSV)</button><button class="pb" id="x4">Restore from backup (JSON)</button><input id="file" type="file" accept="application/json" hidden>
+    <p class="note">Backups never include your PIN. Data is stored in this browser only. Clearing site data deletes it, so export a backup regularly.</p>`;
+  $('#x1').onclick = () => { const copy = JSON.parse(JSON.stringify(DB)); delete copy.auth; download(`orderflow-backup-${today()}.json`, 'application/json', JSON.stringify(copy)); };
+  $('#x2').onclick = () => download('orders.csv', 'text/csv', toCsv(DB.orders));
+  $('#x3').onclick = () => { const q = v => '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"'; download('products.csv','text/csv', ['name,sku,price,stock', ...DB.products.map(p => [p.name,p.sku,p.price,p.stock].map(q).join(','))].join('\r\n')); };
+  $('#x4').onclick = () => $('#file').click();
+  $('#file').onchange = guard(async e => {
+    const f = e.target.files[0]; if (!f) return; let d;
+    try { d = JSON.parse(await f.text()); } catch { throw new Error('This file is not valid JSON'); }
+    if (!d || !Array.isArray(d.orders) || !Array.isArray(d.products) || !d.settings || typeof d.seq !== 'number') throw new Error('This is not an OrderFlow backup');
+    if (!confirm(`Replace ALL current data with this backup (${d.orders.length} orders, ${d.products.length} products)? A recovery copy will be downloaded first.`)) return;
+    const copy = JSON.parse(JSON.stringify(DB)); delete copy.auth; download(`orderflow-recovery-${Date.now()}.json`, 'application/json', JSON.stringify(copy));
+    const keep = DB.auth; DB = Object.assign(DEFAULT(), d); DB.auth = keep; audit('backup.restored'); save(); toast('Backup restored'); e.target.value = ''; render();
+  });
+}
+
+/* ============ Settings ============ */
+function viewSettings(){
+  $('#main').innerHTML = `<div class="wrap"><div><button class="pb" id="s1">Add product name and image</button><button class="pb" id="s2">Add email</button>
+    <button class="pb" id="s3">Add from shipment details</button><button class="pb" id="s5">Change PIN</button><button class="pb" id="s6">Stock policy and session</button></div>
+    <button class="pb" id="s4" style="width:auto;margin-left:auto">Connect label printer</button></div>`;
+  $('#s1').onclick = productDialog; $('#s2').onclick = emailDialog; $('#s3').onclick = fromDialog; $('#s4').onclick = printerDialog; $('#s5').onclick = () => pinDialog(false); $('#s6').onclick = policyDialog;
+}
+const fld = (id, l, v, t = 'text') => `<div class="full"><label for="${id}">${l}</label><input id="${id}" type="${t}" value="${esc(v)}"></div>`;
+function productDialog(){
+  openDlg(`<h2>Products</h2><div class="form">${fld('p_name','Product name','')}${fld('p_sku','SKU','')}
+    <div><label for="p_price">Unit price</label><input id="p_price" type="number" min="0" step="0.01" value="0"></div><div><label for="p_stock">Stock</label><input id="p_stock" type="number" min="0" step="1" value="0"></div>
+    <div class="full"><label for="p_img">Image</label><input id="p_img" type="file" accept="image/*"></div></div>
+    <div class="actions"><button class="btn alt" data-close>Close</button><button class="btn" id="p_save">Save product</button></div>
+    <div id="plist" style="margin-top:18px"></div>`);
+  const draw = () => { $('#plist').innerHTML = DB.products.filter(p => p.active).map(p => `<div style="display:flex;align-items:center;gap:10px;margin:6px 0">${p.image ? `<img class="thumb" src="${p.image}" alt="">` : '<span class="thumb" style="background:#ddd"></span>'}
+    <span style="flex:1">${esc(p.name)} <small>(${esc(p.sku)}) ${fmt(p.price)} &middot; ${p.stock} in stock</small></span><button class="btn alt" data-id="${p.id}">Archive</button></div>`).join('') || '<p class="empty">No products yet.</p>';
+    $('#plist').querySelectorAll('button').forEach(b => b.onclick = () => { if (!confirm('Archive this product? Existing orders keep their data.')) return; DB.products.find(p => p.id === +b.dataset.id).active = false; save(); draw(); }); };
+  draw();
+  $('#p_save').onclick = guard(async () => {
+    const name = $('#p_name').value.trim(), sku = $('#p_sku').value.trim(), price = r2($('#p_price').value), stock = num($('#p_stock').value);
+    if (!name || !sku) throw new Error('Product name and SKU are required'); if (price < 0) throw new Error('Price cannot be negative'); if (!Number.isInteger(stock) || stock < 0) throw new Error('Stock must be a whole number, 0 or more');
+    if (DB.products.some(p => p.active && p.sku.toLowerCase() === sku.toLowerCase())) throw new Error('A product with this SKU already exists');
+    const f = $('#p_img').files[0]; let image = '';
+    if (f) image = await new Promise((res, rej) => { const img = new Image(); img.onload = () => { const s = Math.min(1, 240 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', .8)); }; img.onerror = () => rej(new Error('That image could not be read')); img.src = URL.createObjectURL(f); });
+    DB.products.push({ id: DB.seq++, name, sku, price, stock, low_stock: 5, active: true, image }); audit('product.created', sku); if (save()) { toast('Product saved'); viewSettings(); productDialog(); }
+  });
+}
+function emailDialog(){
+  openDlg(`<h2>Sender email</h2><p>Shown in the email templates and on your records.</p><div class="form">${fld('e_addr','Sender email address',DB.settings.sender_email,'email')}</div>
+    <div class="actions"><button class="btn alt" data-close>Cancel</button><button class="btn" id="e_save">Save</button></div>`);
+  $('#e_save').onclick = () => { DB.settings.sender_email = $('#e_addr').value.trim(); save(); $('#dlg').close(); toast('Saved'); };
+}
+function fromDialog(){
+  const s = DB.settings;
+  openDlg(`<h2>Shipment details (FROM)</h2><div class="form">${fld('f1','Store name',s.store_name)}${fld('f2','Sender name',s.sender_name)}${fld('f3','Sender address',s.sender_address)}${fld('f4','Sender phone',s.sender_phone)}</div>
+    <div class="actions"><button class="btn alt" data-close>Cancel</button><button class="btn" id="f_save">Save</button></div>`);
+  $('#f_save').onclick = () => { s.store_name = $('#f1').value.trim() || 'My Store'; s.sender_name = $('#f2').value.trim(); s.sender_address = $('#f3').value.trim(); s.sender_phone = $('#f4').value.trim(); audit('settings.changed'); save(); $('#dlg').close(); toast('Saved'); };
+}
+function policyDialog(){
+  const s = DB.settings;
+  openDlg(`<h2>Stock policy and session</h2><div class="form"><div class="full"><label for="sp">Deduct stock</label><select id="sp"><option value="creation" ${s.stock_policy==='creation'?'selected':''}>When an order is created</option><option value="shipment" ${s.stock_policy==='shipment'?'selected':''}>When an order is shipped</option><option value="none" ${s.stock_policy==='none'?'selected':''}>Never</option></select></div>
+    <div><label for="sm">Auto sign-out (minutes)</label><input id="sm" type="number" min="1" max="1440" value="${s.session_minutes}"></div>
+    <div><label for="cu">Currency code</label><input id="cu" value="${esc(s.currency)}" maxlength="3"></div></div>
+    <div class="actions"><button class="btn alt" data-close>Cancel</button><button class="btn" id="sv">Save</button></div>`);
+  $('#sv').onclick = guard(() => { const m = num($('#sm').value); if (m < 1 || m > 1440) throw new Error('Auto sign-out must be 1-1440 minutes');
+    try { new Intl.NumberFormat(undefined, { style: 'currency', currency: $('#cu').value.toUpperCase() }); } catch { throw new Error('Currency must be a 3-letter code such as USD or EUR'); }
+    s.stock_policy = $('#sp').value; s.session_minutes = m; s.currency = $('#cu').value.toUpperCase(); audit('settings.changed'); save(); $('#dlg').close(); toast('Saved'); });
+}
+function printerDialog(){
+  const s = DB.settings;
+  openDlg(`<h2>Label printer</h2>
+    <p class="note">A web page cannot list or control printers. Labels print through the normal browser print dialog. Pick your printer there once, and the browser remembers it.</p>
+    <div class="form"><div><label for="lw">Label width (mm)</label><input id="lw" type="number" min="20" max="300" value="${s.label_w}"></div><div><label for="lh">Label height (mm)</label><input id="lh" type="number" min="20" max="300" value="${s.label_h}"></div></div>
+    <p>In the print dialog set: <b>Paper size</b> to your label size (4x6 in), <b>Margins</b> to None, <b>Scale</b> to 100%, and turn off <b>Headers and footers</b>.</p>
+    <p>"Print dialog opened" is the most this page can know. Check that the label actually came out.</p>
+    <div class="actions"><button class="btn alt" data-close>Close</button><button class="btn alt" id="pt">Test label</button><button class="btn" id="ps">Save size</button></div>`);
+  const sv = () => { const w = num($('#lw').value), h = num($('#lh').value); if (w < 20 || w > 300 || h < 20 || h > 300) throw new Error('Label size must be between 20 and 300 mm'); s.label_w = w; s.label_h = h; save(); };
+  $('#ps').onclick = guard(() => { sv(); $('#dlg').close(); toast('Saved'); });
+  $('#pt').onclick = guard(() => { sv(); $('#dlg').close(); printHtml(labelHtml({ order_no:'TEST-LABEL', barcode:'OF0000000000', recipient_name:'Test Recipient', address:'1 Sample Street', city:'Sample City', state:'SC', postal_code:'00000', country:'Country', phone:'', created: stamp(), items:[{name:'Test item',qty:1}], shipment:null }), 'printing-label'); });
+}
+
+/* ============ boot ============ */
+load();
+if (!DB.auth) setPin('000', true).then(showLogin); else showLogin();
+</script>
+</body>
+</html>
